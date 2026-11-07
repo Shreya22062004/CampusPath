@@ -59,6 +59,10 @@ def main():
             joblib.dump(pipeline, ARTIFACTS / f"{safe_model}__{safe_set}.joblib")
     (ARTIFACTS / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print(f"\nSaved model artifacts to: {ARTIFACTS}")
+    # Build the saved held-out evaluation payload consumed by the dashboard API.
+    # The evaluator reloads these pipelines and uses the same data/sample split.
+    from backend.app.evaluate_saved_models import main as evaluate_saved_models
+    evaluate_saved_models(data_path=args.data, sample=args.sample)
     print("Next: start the API with: uvicorn backend.app.main:app --reload")
 
 if __name__ == "__main__":

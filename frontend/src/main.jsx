@@ -10,30 +10,50 @@ const ROUTES=[["Overview","/"],["Student Prediction","/prediction"],["Model Comp
 function App(){
   const [route,setRoute]=useState(window.location.pathname),[fields,setFields]=useState([]),[models,setModels]=useState([]),[featureSets,setFeatureSets]=useState([]),[featureColumns,setFeatureColumns]=useState({}),[ranking,setRanking]=useState([]),[analytics,setAnalytics]=useState(null);
   const [values,setValues]=useState({}),[model,setModel]=useState("RandomForest"),[featureSet,setFeatureSet]=useState("All"),[result,setResult]=useState(null),[loading,setLoading]=useState(false);
-  const [error,setError]=useState(""),[apiReady,setApiReady]=useState(false),[installEvent,setInstallEvent]=useState(null),[menuOpen,setMenuOpen]=useState(false);
+  const [error,setError]=useState(""),[apiReady,setApiReady]=useState(false),[modelsReady,setModelsReady]=useState(false),[backendStatus,setBackendStatus]=useState("checking"),[installEvent,setInstallEvent]=useState(null),[menuOpen,setMenuOpen]=useState(false);
   const navigate=useCallback(path=>{if(!ROUTES.some(([,href])=>href===path))return; if(window.location.pathname!==path)window.history.pushState({},"",path);setRoute(path);setMenuOpen(false)},[]);
   useEffect(()=>{const pop=()=>setRoute(window.location.pathname);window.addEventListener("popstate",pop);return()=>window.removeEventListener("popstate",pop)},[]);
   useEffect(()=>{window.scrollTo(0,0)},[route]);
   useEffect(()=>{const install=e=>{e.preventDefault();setInstallEvent(e)};window.addEventListener("beforeinstallprompt",install);return()=>window.removeEventListener("beforeinstallprompt",install)},[]);
   useEffect(()=>{
     let alive=true;
-    Promise.allSettled([
-      fetch(`${API}/api/schema`).then(r=>{if(!r.ok)throw new Error("Could not load the student input schema.");return r.json()}),
-      fetch(`${API}/api/models`).then(r=>{if(!r.ok)throw new Error("Saved model metadata is unavailable.");return r.json()}),
-      fetch(`${API}/api/feature-ranking`).then(r=>r.ok?r.json():[]),
-      fetch(`${API}/api/analytics`).then(r=>{if(!r.ok)throw new Error("Evaluation results are unavailable – run the saved-model evaluator.");return r.json()}),
-    ]).then(([schemaResult,modelResult,rankingResult,analyticsResult])=>{
+    const getJson=async path=>{const response=await fetch(`${API}${path}`);const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||`Request failed: ${path}`);return data};
+    async function loadDashboardData(){
+      const [healthResult,schemaResult,modelResult]=await Promise.allSettled([
+        getJson("/api/health"),getJson("/api/schema"),getJson("/api/models"),
+      ]);
       if(!alive)return;
-      if(schemaResult.status==="fulfilled"&&modelResult.status==="fulfilled"){
-        const schema=schemaResult.value,modelData=modelResult.value;
-        setFields(schema.fields);setValues(Object.fromEntries(schema.fields.map(f=>[f.name,String(f.default??"")])));
-        setModels(modelData.models);setFeatureSets(modelData.feature_sets);setFeatureColumns(modelData.feature_columns||{});
-        setModel(modelData.models.includes("RandomForest")?"RandomForest":modelData.models[0]);setFeatureSet(modelData.feature_sets.includes("All")?"All":modelData.feature_sets[0]);setApiReady(true);
-      }else{setApiReady(false);setError(schemaResult.reason?.message||modelResult.reason?.message||"Backend unavailable.")}
+      const health=healthResult.status==="fulfilled"?healthResult.value:null;
+      const schema=schemaResult.status==="fulfilled"?schemaResult.value:null;
+      const modelData=modelResult.status==="fulfilled"?modelResult.value:null;
+      const backendReachable=health?.status==="ok"||schema!==null||modelData!==null;
+      setBackendStatus(backendReachable?"connected":"unavailable");
+      if(schema?.fields){setFields(schema.fields);setValues(Object.fromEntries(schema.fields.map(f=>[f.name,String(f.default??"")])));}
+
+      const artifactsAvailable=Boolean(modelData)&&health?.models_trained!==false;
+      setModelsReady(artifactsAvailable);
+      setApiReady(artifactsAvailable&&Boolean(schema?.fields));
+      if(!artifactsAvailable){
+        setModels([]);setFeatureSets([]);setFeatureColumns({});setRanking([]);setAnalytics(null);
+        if(backendReachable){
+          const detail=modelResult.status==="rejected"?modelResult.reason?.message:"";
+          setError(`Backend connected — trained model artifacts are missing or incomplete. ${detail||"Generate the models locally with `python -m backend.app.train_models`, commit the generated files in backend/artifacts and backend/results, and redeploy."}`);
+        }else setError("Backend unavailable. Check the deployed FastAPI service and its runtime logs.");
+        return;
+      }
+
+      setModels(modelData.models);setFeatureSets(modelData.feature_sets);setFeatureColumns(modelData.feature_columns||{});
+      setModel(modelData.models.includes("RandomForest")?"RandomForest":modelData.models[0]);setFeatureSet(modelData.feature_sets.includes("All")?"All":modelData.feature_sets[0]);
+      const [rankingResult,analyticsResult]=await Promise.allSettled([
+        getJson("/api/feature-ranking"),getJson("/api/analytics"),
+      ]);
+      if(!alive)return;
       if(rankingResult.status==="fulfilled")setRanking(Array.isArray(rankingResult.value)?rankingResult.value.filter(x=>x.feature&&Number.isFinite(Number(x.mean_abs_shap))&&Number(x.mean_abs_shap)>=0):[]);
       if(analyticsResult.status==="fulfilled")setAnalytics(analyticsResult.value);
-      else setError(previous=>previous||analyticsResult.reason?.message||"Evaluation results are unavailable.");
-    });
+      else setError(analyticsResult.reason?.message||"Evaluation results are unavailable – regenerate them with the saved-model evaluator.");
+      if(schemaResult.status==="rejected")setError(schemaResult.reason?.message||"Could not load the student input schema.");
+    }
+    loadDashboardData().catch(e=>{if(alive){setBackendStatus("unavailable");setError(e.message||"Backend unavailable.")}});
     return()=>{alive=false};
   },[]);
   const onProfileChange=useCallback(updater=>{setValues(old=>typeof updater==="function"?updater(old):updater);setResult(null);setError("")},[]);
@@ -49,7 +69,7 @@ function App(){
 
   const page=useMemo(()=>{
     if(route==="/")return <OverviewPage analytics={analytics} models={models} metrics={analytics?.metrics||[]} ranking={ranking} selectedCount={featureColumns[featureSet]?.length??null} onNavigate={navigate}/>;
-    if(route==="/prediction")return <PredictionPage fields={fields} fieldColumns={featureColumns} values={values} setValues={onProfileChange} models={models} featureSets={featureSets} model={model} setModel={changeModel} featureSet={featureSet} setFeatureSet={changeFeatureSet} result={result} loading={loading} apiReady={apiReady} onSubmit={predict} onReset={resetForm}/>;
+    if(route==="/prediction")return <PredictionPage fields={fields} fieldColumns={featureColumns} values={values} setValues={onProfileChange} models={models} featureSets={featureSets} model={model} setModel={changeModel} featureSet={featureSet} setFeatureSet={changeFeatureSet} result={result} loading={loading} apiReady={apiReady} modelsReady={modelsReady} onSubmit={predict} onReset={resetForm}/>;
     if(route==="/comparison")return <ComparisonPage analytics={analytics} models={models} featureSets={featureSets}/>;
     if(route==="/explainable-ai")return <ExplainablePage ranking={ranking} analytics={analytics} models={models} featureSets={featureSets} featureColumns={featureColumns}/>;
     if(route==="/about")return <AboutPage analytics={analytics} models={models}/>;
@@ -58,7 +78,7 @@ function App(){
 
   return <div className="app-shell"><header className="topbar"><a className="brand" href="/" onClick={e=>{e.preventDefault();navigate("/")}} aria-label="CampusPath Overview"><div className="brand-icon"><GraduationCap size={24}/></div><div><strong>Campus<span>Path</span></strong><small>STUDENT PLACEMENT ANALYTICS</small></div></a>
     <nav className={menuOpen?"nav open":"nav"} aria-label="Main navigation">{ROUTES.map(([label,path])=><a key={path} href={path} className={route===path?"active":""} aria-current={route===path?"page":undefined} onClick={e=>{e.preventDefault();navigate(path)}}>{label}</a>)}</nav>
-    <div className="header-actions"><div className={`api-status ${apiReady?"online":"offline"}`} role="status"><i/>{apiReady?"Backend connected":"Backend unavailable"}</div>{"serviceWorker" in navigator&&<button className="install-button" type="button" onClick={installApp}><Download size={15}/> Install app</button>}<button className="menu-button" aria-label={menuOpen?"Close navigation":"Open navigation"} aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X/>:<Menu/>}</button></div>
+    <div className="header-actions"><div className={`api-status ${backendStatus==="connected"?"online":"offline"}`} role="status"><i/>{backendStatus==="checking"?"Checking backend…":backendStatus==="unavailable"?"Backend unavailable":modelsReady?"Backend connected":"Backend connected — models not trained"}</div>{"serviceWorker" in navigator&&<button className="install-button" type="button" onClick={installApp}><Download size={15}/> Install app</button>}<button className="menu-button" aria-label={menuOpen?"Close navigation":"Open navigation"} aria-expanded={menuOpen} onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X/>:<Menu/>}</button></div>
   </header><main className="route-main"><div className="route-transition" key={route}>{error&&<div className="alert" role="alert">{error}</div>}{page}</div><footer><span>CAMPUSPATH · STUDENT PLACEMENT ANALYTICS</span><span>Educational use only · Model estimates are not guarantees of employment.</span></footer></main></div>;
 }
 createRoot(document.getElementById("root")).render(<App/>);

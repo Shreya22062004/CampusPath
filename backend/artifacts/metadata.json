@@ -1,0 +1,96 @@
+{
+  "target": "placed",
+  "models": [
+    "LogisticRegression",
+    "RandomForest",
+    "XGBoost",
+    "LightGBM",
+    "CatBoost"
+  ],
+  "feature_sets": {
+    "Top-3": [
+      "backlogs",
+      "work_experience_months",
+      "internships_count"
+    ],
+    "Top-5": [
+      "backlogs",
+      "work_experience_months",
+      "internships_count",
+      "technical_skills_score",
+      "soft_skills_score"
+    ],
+    "Top-7": [
+      "backlogs",
+      "work_experience_months",
+      "internships_count",
+      "technical_skills_score",
+      "soft_skills_score",
+      "communication_score",
+      "aptitude_score"
+    ],
+    "Top-10": [
+      "backlogs",
+      "work_experience_months",
+      "internships_count",
+      "technical_skills_score",
+      "soft_skills_score",
+      "communication_score",
+      "aptitude_score",
+      "degree_percentage",
+      "hsc_percentage",
+      "certifications_count"
+    ],
+    "All": [
+      "gender",
+      "age",
+      "city_tier",
+      "ssc_percentage",
+      "ssc_board",
+      "hsc_percentage",
+      "hsc_board",
+      "hsc_stream",
+      "degree_percentage",
+      "degree_field",
+      "mba_percentage",
+      "specialization",
+      "internships_count",
+      "projects_count",
+      "certifications_count",
+      "technical_skills_score",
+      "soft_skills_score",
+      "aptitude_score",
+      "communication_score",
+      "work_experience_months",
+      "leadership_roles",
+      "extracurricular_activities",
+      "backlogs"
+    ]
+  },
+  "input_columns": [
+    "gender",
+    "age",
+    "city_tier",
+    "ssc_percentage",
+    "ssc_board",
+    "hsc_percentage",
+    "hsc_board",
+    "hsc_stream",
+    "degree_percentage",
+    "degree_field",
+    "mba_percentage",
+    "specialization",
+    "internships_count",
+    "projects_count",
+    "certifications_count",
+    "technical_skills_score",
+    "soft_skills_score",
+    "aptitude_score",
+    "communication_score",
+    "work_experience_months",
+    "leadership_roles",
+    "extracurricular_activities",
+    "backlogs"
+  ],
+  "positive_class": 1
+}

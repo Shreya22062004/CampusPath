@@ -4,8 +4,4 @@ __pycache__/
 venv/
 node_modules/
 frontend/dist/
-backend/artifacts/*.joblib
-backend/artifacts/metadata.json
-backend/results/
-results/
 .DS_Store

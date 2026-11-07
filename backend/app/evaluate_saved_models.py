@@ -24,9 +24,9 @@ ARTIFACTS = ROOT / "backend" / "artifacts"
 RESULTS = ROOT / "backend" / "results"
 
 
-def main():
+def main(data_path=DATA_PATH, sample=None):
     meta = json.loads((ARTIFACTS / "metadata.json").read_text(encoding="utf-8"))
-    df = load_data(DATA_PATH)
+    df = load_data(data_path, sample)
     X, y = df.drop(columns=[TARGET]), df[TARGET].astype(int)
     _, X_test, _, y_test = train_test_split(
         X, y, test_size=0.2, stratify=y, random_state=SEED
