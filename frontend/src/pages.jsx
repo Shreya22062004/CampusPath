@@ -6,7 +6,7 @@ const TITLES={ssc_percentage:"10th Percentage",ssc_board:"10th Board",hsc_percen
 export const pretty=s=>TITLES[s]||s.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 export const modelLabel=s=>({LogisticRegression:"Logistic Regression",RandomForest:"Random Forest"}[s]||s);
 const featureLabel=s=>s==="All"?"All Features":s.replace("-"," ");
-const API=import.meta.env.VITE_API_URL||"http://127.0.0.1:8000";
+const API=import.meta.env.DEV?(import.meta.env.VITE_API_URL||"http://127.0.0.1:8000"):"";
 const METRICS=[{key:"accuracy",label:"Accuracy",color:"#4267e8"},{key:"precision",label:"Precision",color:"#8a63d2"},{key:"recall",label:"Recall",color:"#16a59a"},{key:"f1",label:"F1-score",color:"#e69b43"},{key:"roc_auc",label:"ROC-AUC",color:"#d85d79"}];
 
 function PageHeading({step,title,description,aside}){return <div className="section-title page-title"><div><span className="step">{step}</span><h1>{title}</h1>{description&&<p>{description}</p>}</div>{aside}</div>}

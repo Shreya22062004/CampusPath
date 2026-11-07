@@ -9,9 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import math
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "campus_placement_data.csv"
-ARTIFACTS = ROOT / "backend" / "artifacts"
+ARTIFACTS = ROOT / "artifacts"
 
 app = FastAPI(title="Student Placement Prediction API", version="1.0.0")
 app.add_middleware(
@@ -73,7 +73,7 @@ def models():
 def feature_ranking():
     # The artifacts CSV records feature order only. SHAP magnitudes are exported
     # separately by the training workflow; joining by feature prevents NaN UI values.
-    path = ROOT / "backend" / "results" / "shap_feature_ranking.csv"
+    path = ROOT / "results" / "shap_feature_ranking.csv"
     if not path.exists():
         raise HTTPException(status_code=503, detail="Feature ranking not generated yet.")
     ranking = pd.read_csv(path)
@@ -95,14 +95,14 @@ def feature_ranking():
 @app.get("/api/analytics")
 def analytics():
     """Return held-out test metrics computed from the saved pipelines."""
-    path = ROOT / "backend" / "results" / "saved_model_analytics.json"
+    path = ROOT / "results" / "saved_model_analytics.json"
     if not path.exists():
         raise HTTPException(status_code=503, detail="Model analytics have not been generated. Run python -m backend.app.evaluate_saved_models")
     return json.loads(path.read_text(encoding="utf-8"))
 
 @app.get("/api/shap-summary")
 def shap_summary():
-    path = ROOT / "backend" / "results" / "shap_summary_beeswarm.png"
+    path = ROOT / "results" / "shap_summary_beeswarm.png"
     if not path.exists():
         raise HTTPException(status_code=503, detail="SHAP summary plot is unavailable. Run the training SHAP analysis first.")
     return FileResponse(path, media_type="image/png", filename="shap-summary.png")

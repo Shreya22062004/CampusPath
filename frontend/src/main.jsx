@@ -4,7 +4,7 @@ import { Download, GraduationCap, Menu, X } from "lucide-react";
 import { AboutPage, ComparisonPage, ExplainablePage, modelLabel, OverviewPage, PredictionPage, pretty } from "./pages.jsx";
 import "./style.css";
 
-const API=import.meta.env.VITE_API_URL||"http://127.0.0.1:8000";
+const API=import.meta.env.DEV?(import.meta.env.VITE_API_URL||"http://127.0.0.1:8000"):"";
 const ROUTES=[["Overview","/"],["Student Prediction","/prediction"],["Model Comparison","/comparison"],["Explainable AI","/explainable-ai"],["About Project","/about"]];
 
 function App(){
