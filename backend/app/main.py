@@ -13,7 +13,12 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = ROOT / "data" / "campus_placement_data.csv"
 ARTIFACTS = ROOT / "artifacts"
 
-app = FastAPI(title="Student Placement Prediction API", version="1.0.0")
+app = FastAPI(
+    title="Student Placement Prediction API",
+    version="1.0.0",
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+)
 app.add_middleware(
     CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv(
         "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
